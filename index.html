@@ -1,0 +1,438 @@
+<!doctype html>
+<html>
+  <head>
+    <meta content="width=device-width, initial-scale=1.0 user-scalable=no" name="viewport"/>
+    <title>PROJECT</title>
+    <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font: 13px 'sans-serif', Helvetica, Arial; padding:0; }
+    .mainBox {
+      width:100%; overflow:hidden;
+    }
+
+    .board {
+      width:100%; height:200px; background:green; margin:0 0 10px;
+      text-align:center;
+      position:relative;
+      /*background-image:url('https://cdnstatic.svc.litv.tv/015213L.jpg');*/
+      background-size:100%;
+    }
+
+    .board p {
+      font-size:64px; line-height:200px;
+      color:white; text-shadow:2px 2px 6px #333;
+    }
+    .btn {
+      width:50px; height:50px; background:gray; display:inline-block;
+    }
+    .logBox {
+      width:100%; height:100px; background:black; font-size:0; position:relative;
+      overflow:hidden; margin-top:10px;
+    }
+
+    .log {
+      width:97.5%; min-height:80px; position:absolute; left:1%; bottom:10px;
+    }
+
+    .log p {
+      height:16px; line-height:16px; font-size:14px; color:white; margin:0;
+    }
+
+    .playerSection {
+      width:20%; padding:20px 0; overflow:hidden; background:#FAFAFA; display:inline-block;
+      margin-right:4%; opacity:1;
+    }
+
+    .playerStatus {
+      width:50px; height:50px; background:white; font-size:36px; text-align:center; line-height:50px;
+      margin:0 auto 20px; border-radius:5px; box-shadow:0px 0px 6px #333;
+    }
+
+    .playerName {
+      width:100%; height:30px; line-height:30px; color:black; font-size:24px; text-align:center;
+    }
+
+    .playerScore {
+      width:100%; height:30px; line-height:30px; color:#333; font-size:24px; text-align:center;
+    }
+
+    .mobilePanel {
+      width:100%; overflow:hidden; display:none;
+    }
+
+    .formP { font-size:24px; margin:0 0 5px; text-align:center; margin:50px 0 0; }
+
+    .inputBox {
+      width:90%; margin:0 auto 10px; height:50px; font-size:24px; display:block;
+      border-radius:10px; text-align:center;
+    }
+
+    .sendBox {
+      width:40%; height:50px; background:orange; color:white; font-size:20px; text-align:center;
+      line-height:50px; margin:0 auto;
+    }
+
+    
+
+    .mobileTouch {
+      width:300px; height:300px; margin:10px auto 0; background:orange; display:none;
+      border-radius:10px; box-shadow:0 0 6px #333;
+    }
+
+    .mobileTouch.block {
+      background:gray;
+    }
+    
+
+    .startBtn {
+      padding:10px 15px; background:#0A82EB; display:inline-block; line-height:16px;
+      font-size:16px; color:white; position:absolute; right:15px; bottom:15px;
+      box-shadow:0px 0px 4px #333; border-radius:5px; cursor:pointer;
+    }
+
+    .stopBtn {
+      padding:10px 15px; background:red; display:inline-block; line-height:16px;
+      font-size:16px; color:white; position:absolute; right:15px; bottom:15px;
+      box-shadow:0px 0px 4px #333; border-radius:5px; cursor:pointer;
+    }
+
+    @media (max-width: 768px) {
+      .mainBox {
+        display:none;
+      }
+
+
+      .mobilePanel {
+        display:block;
+      }
+    }
+
+    /* plugin */
+    .hide { display:none; }
+    .hidden { visibility:hidden; }
+    </style>
+  </head>
+  <body>
+    <!-- HOST -->
+    <div id="box" class="mainBox">
+      <div id="board" class="board"><p id="boardText">0</p>
+        <div id="startBtn" class="startBtn">start</div>
+        <div id="stopBtn" class="stopBtn" style="display:none">stop</div>
+      </div>
+
+      <div class="playerSection">
+        <div class="playerStatus hidden"></div>
+        <div class="playerName"></div>
+        <div class="playerScore hidden">0</div>
+      </div>
+      <div class="playerSection">
+        <div class="playerStatus hidden"></div>
+        <div class="playerName"></div>
+        <div class="playerScore hidden">0</div>
+      </div>
+      <div class="playerSection">
+        <div class="playerStatus hidden"></div>
+        <div class="playerName"></div>
+        <div class="playerScore hidden">0</div>
+      </div>
+      <div class="playerSection">
+        <div class="playerStatus hidden"></div>
+        <div class="playerName"></div>
+        <div class="playerScore hidden">0</div>
+      </div>
+      <div id="logBox" class="logBox">
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+    
+    <!-- PLAYER -->
+    <div id="mobilePanel" class="mobilePanel">
+      <p class="formP">your name?</p>
+      <input id="inputBox" type="text" class="inputBox"/>
+      <div id="sendBox" class="sendBox">send</div>
+    </div>
+    <p id="userName" class="formP" style="display:none"></p>
+    <div id="mobileTouch" class="mobileTouch"></div>
+  </body>
+</html>
+
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script>
+  window.onerror = function (errorMsg, url, lineNumber) {
+      alert('Error: ' + errorMsg + ' Script: ' + url + ' Line: ' + lineNumber);
+  };
+
+  var socket = io();
+  var user = null;
+  var player = 0;
+  var myToken = null;
+  var boxEl = document.getElementById("box");
+  var inputEl = document.getElementById("inputBox");
+  var playerEl = document.getElementsByClassName("playerSection");
+
+  if (boxEl.clientWidth > 768) {
+    user = "host";
+  }
+
+  var gameApp = (function() {
+    //setup
+    var count = 0;
+    var speed = 1000;
+    var settleDelay = 500;
+    var phase = "wait";
+    var baseNumber = 3;
+    var timer = null;
+    var answerOverall = [];
+    var players = []; //user: name, token: string, score: value
+    var boardEl = document.getElementById("board");
+    var boardTextEl = document.getElementById("boardText");
+
+    function init() {
+      count = 0;
+      phase = "wait";
+      answerOverall = [];
+      clearTimeout(timer);
+      render();
+    }
+
+    function action() {
+      count += 1;
+      //BREAK
+      if (count === 31) {
+        init();
+        return;
+      }
+      phase = (caculate(count)) ? "hit" : "hold";
+      render();
+      timer = setTimeout(function(){
+        settle();
+      }, speed);
+    }
+
+    function settle() {
+      var text = "";
+      socket.emit('reset btn', text);
+      timer = setTimeout(function(){
+        answerOverall = [];
+        playerPeroformance(null, "clear");
+        action();
+      }, settleDelay);
+
+      for (var i = 0, max = players.length; i < max; i++) {
+        var findout = false;
+        for (var x = 0; x < answerOverall.length; x++) {
+          if (answerOverall[x] === players[i].myToken) {
+            judge(i);
+            findout = true;
+            break;
+          }
+        }
+        if (phase === "hit" && findout === false) {
+          players[i].score -= 100;
+          message = players[i].user + " didn't hit, minus " + 100;
+          playerPeroformance(i, "wrong");
+          $('#log').append($('<p>').text(message));
+        }
+      }
+    }
+
+    function judge(index) {
+      switch (phase) {
+              case "hit":
+              players[index].score += 200;
+              message = players[index].user + " get " + 200;
+              playerPeroformance(index, "right");
+              break;
+            case "hold":
+              players[index].score -= 100;
+              message = players[index].user + " minus " + 100;
+              playerPeroformance(index, "wrong");
+              break;
+      }
+      $('#log').append($('<p>').text(message));
+    }
+
+    function getHit(token) {
+      answerOverall.push(token);
+    }
+
+    function render() {
+      boardTextEl.innerText = count;
+    }
+
+    function playerJoin(index, theUser) {
+      playerEl[index].children[0].classList.remove("hidden");
+      playerEl[index].children[1].innerText = theUser;
+      playerEl[index].children[2].innerText = 0;
+      playerEl[index].children[2].classList.remove("hidden");
+    }
+
+    function playerPeroformance(index, type) {
+      if (type === "right") {
+        playerEl[index].children[0].style.color = "green";
+        playerEl[index].children[0].innerText = "O";
+        playerEl[index].children[2].innerText = players[index].score;
+      } else if (type === "wrong") {
+        playerEl[index].children[0].style.color = "red";
+        playerEl[index].children[0].innerText = "X";
+        playerEl[index].children[2].innerText = players[index].score;
+      } else if (type === "clear") {
+        playerEl[0].children[0].innerText = "";
+        playerEl[1].children[0].innerText = "";
+        playerEl[2].children[0].innerText = "";
+        playerEl[3].children[0].innerText = "";
+      } else if (type === "init") {
+        playerEl[0].children[2].innerText = 0;
+        playerEl[1].children[2].innerText = 0;
+        playerEl[2].children[2].innerText = 0;
+        playerEl[3].children[2].innerText = 0;
+      }
+    }
+
+    //=== Method ===
+    function caculate(value) {
+      if (value % baseNumber === 0) {
+        return true;
+      } else {
+        if ((value.toString()).indexOf(baseNumber) >= 0) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+
+    //=== API ===
+    return {
+      "init": init,
+      "begin": action,
+      "getHit": getHit,
+      "playerJoin": playerJoin,
+      "clearScore": function() {
+        for (var i = 0, max = players.length; i < max; i++) {
+          players[i].score = 0;
+        }
+        playerPeroformance(null, "init");
+      },
+      "players": players
+    }
+  })();
+
+  var playerController = (function() {
+    var disable = false;
+    var hitEl = document.getElementById("mobileTouch");
+
+    function hit() {
+      if (disable === true) return;
+        hitEl.classList.add("block");
+        disable = true;
+        var data = {};
+        data.user = user;
+        data.myToken = myToken;
+        socket.emit('player hit', data);
+    }
+
+    function reset() {
+      hitEl.classList.remove("block");
+      disable = false;
+    }
+
+    return {
+      "hit": hit,
+      "reset": reset,
+      "disable": disable
+    }
+  })();
+
+  //Method
+  function compose(length) {
+    var array = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k",
+                 "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
+                 "w", "x", "y", "z"];
+    var theString = "";
+    for (var i = 0; i < length; i++) {
+      var char = Math.floor((Math.random() * 25));
+      theString += array[char];
+    }
+    return theString;
+  }
+
+  if (user === "host") {
+    gameApp.init();
+  }
+
+  //Event Binding
+  $("#sendBox").click(function(){
+    user = inputEl.value;
+    if (user === "") { user = "NOBODY" }
+    document.getElementById("userName").innerText = user;
+    myToken = compose(6);
+    var data = {};
+    data.user = user;
+    data.myToken = myToken;
+    socket.emit('join request', data);
+
+    
+    $("#mobilePanel").hide();
+    $("#userName").show();
+    $("#mobileTouch").show();
+  });
+
+  $("#startBtn").click(function(){
+    gameApp.begin();
+    $("#startBtn").hide();
+    $("#stopBtn").show();
+  });
+
+  $("#stopBtn").click(function(){
+    gameApp.clearScore();
+    gameApp.init();
+    $("#stopBtn").hide();
+    $("#startBtn").show();
+  });
+
+  $("#mobileTouch").click(function(){
+    playerController.hit();
+  });
+
+  //Socket Event
+  socket.on('join request', function(data) {
+    if (user !== "host") {
+      return;
+    }
+    console.log(data);
+    var newPlayer = {};
+    newPlayer.user = data.user;
+    newPlayer.myToken = data.myToken;
+    newPlayer.score = 0;
+    gameApp.players.push(newPlayer);
+
+    console.log(gameApp.players);
+    message = data.user + " join this room.";
+    $('#log').append($('<p>').text(message));
+    if (player < 4) {
+      gameApp.playerJoin(player, data.user);
+      player += 1;
+    }
+  });
+
+  socket.on("player hit", function(data) {
+    gameApp.getHit(data.myToken);
+    //message = data.user + " hit button, and token is " + data.myToken;
+    //$('#log').append($('<p>').text(message));
+  });
+
+  socket.on('reset btn', function(text){
+    if (user !== "host") {
+      playerController.reset();
+    }
+  });
+  
+</script>
+
+<!--
+todo:bring id token to host view
+add audio api
+depend user's device, include different js
+-->
