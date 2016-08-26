@@ -8,3 +8,4 @@ reference: http://socket.io/get-started/chat/
 
 * Minimize the response time
 * beautify UI
+* test
