@@ -4,7 +4,7 @@ Node.js + socket.io + Jquery
 
 reference: http://socket.io/get-started/chat/
 
-##todo:
+## todo:
 
 * Minimize the response time
 * beautify UI
