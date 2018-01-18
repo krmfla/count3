@@ -1,0 +1,9 @@
+{
+  "name": "socketIO-count3",
+  "version": "0.0.1",
+  "description": "socketIO game",
+  "dependencies": {
+    "express": "4.10.2",
+    "socket.io": "1.2.0"
+  }
+}
